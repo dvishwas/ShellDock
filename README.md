@@ -73,7 +73,31 @@ npm run dist           # Build for current platform
 npm run dist:mac       # macOS (.dmg)
 npm run dist:win       # Windows (.exe, .msi)
 npm run dist:linux     # Linux (.deb, .rpm, .AppImage, .snap)
+npm run installer:mac  # macOS installer (.dmg + .zip)
 ```
+
+### macOS Code Signing
+
+The app requires an Apple Developer ID certificate for proper macOS integration (Spotlight indexing, Gatekeeper approval). To enable signing, update `electron-builder.yml`:
+
+```yaml
+mac:
+  identity: "Developer ID Application: Your Name (TEAM_ID)"
+  notarize:
+    teamId: "TEAM_ID"
+```
+
+This requires an [Apple Developer Program](https://developer.apple.com/programs/) membership ($99/year).
+
+### Installing Unsigned Builds
+
+Without code signing, recipients of the DMG need to run this once after dragging ShellDock to Applications:
+
+```bash
+xattr -cr /Applications/ShellDock.app
+```
+
+This removes the macOS quarantine flag. Note that unsigned builds will not appear in Spotlight.
 
 ## Tech Stack
 

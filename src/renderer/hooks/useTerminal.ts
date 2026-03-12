@@ -100,6 +100,14 @@ export function useTerminal(
     fitAddonRef.current = fitAddon;
     log('Terminal opened in DOM for tab:', tabId);
 
+    // Let modifier key combos (Cmd+T, Cmd+W, etc.) bubble up to window handlers
+    terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && ['t', 'w', 'Tab', '1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(e.key)) {
+        return false;
+      }
+      return true;
+    });
+
     // Fit after a small delay to ensure container is sized
     setTimeout(async () => {
       try {

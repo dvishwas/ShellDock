@@ -17,6 +17,14 @@ mac:
     - dmg
     - zip
   icon: assets/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
+  # Uncomment and set when you have an Apple Developer ID certificate:
+  # identity: "Developer ID Application: Your Name (TEAM_ID)"
+  # notarize:
+  #   teamId: "TEAM_ID"
 
 win:
   target:
