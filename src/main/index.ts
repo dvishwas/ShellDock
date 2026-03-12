@@ -1,9 +1,10 @@
-import { app, BrowserWindow, shell, dialog } from 'electron';
+import { app, BrowserWindow, Menu, shell, dialog } from 'electron';
 import * as path from 'path';
 import { autoUpdater } from 'electron-updater';
 import { setupIpcHandlers, setMainWindow, saveScrollbackToDisk } from './ipc-handlers';
 import { killAllSessions } from './pty-manager';
 import { getConfig } from './config-store';
+import { IPC } from '../shared/types';
 
 const log = (msg: string, ...args: any[]) => console.log(`[ShellDock:main] ${msg}`, ...args);
 const logError = (msg: string, ...args: any[]) => console.error(`[ShellDock:main] ERROR: ${msg}`, ...args);
@@ -56,11 +57,87 @@ function createWindow(): void {
   log('Main window created successfully');
 }
 
+function buildMenu(): void {
+  const isMac = process.platform === 'darwin';
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const },
+            ],
+          },
+        ]
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Tab',
+          accelerator: 'CmdOrCtrl+T',
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send(IPC.MENU_NEW_TAB);
+            }
+          },
+        },
+        { type: 'separator' },
+        isMac ? { role: 'close' } : { role: 'quit' },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        ...(isMac
+          ? [{ type: 'separator' as const }, { role: 'front' as const }]
+          : [{ role: 'close' as const }]),
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+  log('Application menu built');
+}
+
 app.whenReady().then(() => {
   log('App ready, platform:', process.platform, 'electron:', process.versions.electron);
 
   setupIpcHandlers();
   createWindow();
+  buildMenu();
   setupAutoUpdater();
 
   app.on('activate', () => {

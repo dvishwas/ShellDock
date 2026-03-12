@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TabBar } from './components/TabBar';
 import { TerminalPanel } from './components/TerminalPanel';
-import { IPC, TabInfo, AppConfig, TabPosition, SessionState } from '../shared/types';
+import { IPC, TabInfo, AppConfig, TabPosition, ThemeSetting, SessionState } from '../shared/types';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -34,13 +34,24 @@ export default function App() {
     shell: '/bin/zsh',
     fontSize: 14,
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    theme: 'dark',
+    theme: 'system',
   });
   const creatingTabRef = useRef(false);
+  const [systemTheme, setSystemTheme] = useState<'dark' | 'light'>(
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+  );
   const [collapsed, setCollapsed] = useState(false);
   const [panelSize, setPanelSize] = useState<Record<TabPosition, number>>({ ...DEFAULT_PANEL_SIZE });
   const isDraggingRef = useRef(false);
   const appRef = useRef<HTMLDivElement>(null);
+
+  // Listen for OS theme changes
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setSystemTheme(e.matches ? 'dark' : 'light');
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Load initial config and session
   useEffect(() => {
@@ -133,6 +144,16 @@ export default function App() {
     }
   }, [tabs.length]);
 
+  // Listen for menu-triggered new tab
+  useEffect(() => {
+    const onMenuNewTab = () => {
+      log('Menu: new tab triggered');
+      createTab();
+    };
+    ipcRenderer.on(IPC.MENU_NEW_TAB, onMenuNewTab);
+    return () => { ipcRenderer.removeListener(IPC.MENU_NEW_TAB, onMenuNewTab); };
+  }, [createTab]);
+
   const closeTab = useCallback(
     async (tabId: string) => {
       log('Closing tab:', tabId);
@@ -184,6 +205,16 @@ export default function App() {
       setConfig(updated);
     } catch (err: any) {
       logError('Failed to change tab position:', err.message);
+    }
+  }, []);
+
+  const changeTheme = useCallback(async (theme: ThemeSetting) => {
+    log('Changing theme to:', theme);
+    try {
+      const updated = await ipcRenderer.invoke(IPC.CONFIG_SET, { theme });
+      setConfig(updated);
+    } catch (err: any) {
+      logError('Failed to change theme:', err.message);
     }
   }, []);
 
@@ -282,20 +313,23 @@ export default function App() {
       : { height: panelSize[pos] };
 
   const resizeCursor = isVertical ? 'col-resize' : 'row-resize';
+  const resolvedTheme = config.theme === 'system' ? systemTheme : config.theme;
 
   return (
-    <div ref={appRef} className={`app theme-${config.theme}`} style={{ flexDirection }}>
+    <div ref={appRef} className={`app theme-${resolvedTheme}`} style={{ flexDirection }}>
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
         position={config.tabPosition}
         collapsed={collapsed}
+        themeSetting={config.theme}
         onToggleCollapse={toggleCollapse}
         onCreateTab={createTab}
         onCloseTab={closeTab}
         onSwitchTab={switchTab}
         onRenameTab={renameTab}
         onChangePosition={changeTabPosition}
+        onChangeTheme={changeTheme}
         {...(!collapsed && { style: tabBarStyle })}
       />
       {!collapsed && (
@@ -313,7 +347,7 @@ export default function App() {
             isVisible={tab.id === activeTabId}
             fontSize={config.fontSize}
             fontFamily={config.fontFamily}
-            theme={config.theme}
+            theme={resolvedTheme}
           />
         ))}
         {tabs.length === 0 && (

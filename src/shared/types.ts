@@ -13,7 +13,7 @@ export interface AppConfig {
   shell: string;
   fontSize: number;
   fontFamily: string;
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'system';
 }
 
 export interface SessionState {
@@ -23,6 +23,8 @@ export interface SessionState {
 }
 
 // IPC channel names
+export type ThemeSetting = 'dark' | 'light' | 'system';
+
 export const IPC = {
   // Main -> Renderer
   TAB_DATA: 'tab:data',
@@ -30,6 +32,7 @@ export const IPC = {
   TAB_BELL: 'tab:bell',
   SESSION_RESTORED: 'session:restored',
   CONFIG_CHANGED: 'config:changed',
+  MENU_NEW_TAB: 'menu:new-tab',
 
   // Renderer -> Main
   TAB_CREATE: 'tab:create',

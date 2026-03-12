@@ -13,7 +13,7 @@ const defaultConfig: AppConfig = {
   shell: defaultShell(),
   fontSize: 14,
   fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-  theme: 'dark',
+  theme: 'system',
 };
 
 log('Initializing config store');
