@@ -58,11 +58,24 @@ body {
   border-right: 1px solid #313244;
   padding: 8px;
   gap: 4px;
+  overflow: hidden;
 }
 
 .tab-bar-right {
   border-right: none;
   border-left: 1px solid #313244;
+}
+
+/* Collapsed states */
+.tab-bar-collapsed.tab-bar-top {
+  height: auto;
+  min-height: 32px;
+}
+
+.tab-bar-collapsed.tab-bar-left,
+.tab-bar-collapsed.tab-bar-right {
+  width: auto;
+  min-width: 48px;
 }
 
 .theme-light .tab-bar-top { border-bottom-color: #ccd0da; }
@@ -100,6 +113,50 @@ body {
 }
 
 .theme-light .position-select { border-color: #acb0be; }
+
+/* Collapse button */
+.collapse-btn {
+  background: none;
+  border: 1px solid #585b70;
+  color: inherit;
+  border-radius: 4px;
+  font-size: 9px;
+  padding: 2px 6px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  -webkit-app-region: no-drag;
+}
+
+.collapse-btn:hover {
+  opacity: 1;
+}
+
+.theme-light .collapse-btn { border-color: #acb0be; }
+
+/* Resize handle */
+.resize-handle {
+  flex-shrink: 0;
+  background: transparent;
+  transition: background 0.15s;
+  z-index: 10;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: #89b4fa44;
+}
+
+.resize-handle-left,
+.resize-handle-right {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.resize-handle-top {
+  height: 4px;
+  cursor: row-resize;
+}
 
 /* Tab list */
 .tab-list-horizontal {

@@ -8,6 +8,24 @@ const { ipcRenderer } = window.require('electron');
 const log = (msg: string, ...args: any[]) => console.log(`[ShellDock:renderer] ${msg}`, ...args);
 const logError = (msg: string, ...args: any[]) => console.error(`[ShellDock:renderer] ERROR: ${msg}`, ...args);
 
+const DEFAULT_PANEL_SIZE: Record<TabPosition, number> = {
+  left: 200,
+  right: 200,
+  top: 40,
+};
+
+const MIN_PANEL_SIZE: Record<TabPosition, number> = {
+  left: 120,
+  right: 120,
+  top: 32,
+};
+
+const MAX_PANEL_SIZE: Record<TabPosition, number> = {
+  left: 500,
+  right: 500,
+  top: 300,
+};
+
 export default function App() {
   const [tabs, setTabs] = useState<TabInfo[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -19,6 +37,10 @@ export default function App() {
     theme: 'dark',
   });
   const creatingTabRef = useRef(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [panelSize, setPanelSize] = useState<Record<TabPosition, number>>({ ...DEFAULT_PANEL_SIZE });
+  const isDraggingRef = useRef(false);
+  const appRef = useRef<HTMLDivElement>(null);
 
   // Load initial config and session
   useEffect(() => {
@@ -165,6 +187,50 @@ export default function App() {
     }
   }, []);
 
+  const toggleCollapse = useCallback(() => {
+    setCollapsed((prev) => !prev);
+  }, []);
+
+  // Resize handle drag logic
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isDraggingRef.current = true;
+      const pos = config.tabPosition;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startSize = panelSize[pos];
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        if (!isDraggingRef.current) return;
+        let newSize: number;
+        if (pos === 'top') {
+          newSize = startSize + (moveEvent.clientY - startY);
+        } else if (pos === 'left') {
+          newSize = startSize + (moveEvent.clientX - startX);
+        } else {
+          newSize = startSize - (moveEvent.clientX - startX);
+        }
+        newSize = Math.max(MIN_PANEL_SIZE[pos], Math.min(MAX_PANEL_SIZE[pos], newSize));
+        setPanelSize((prev) => ({ ...prev, [pos]: newSize }));
+      };
+
+      const onMouseUp = () => {
+        isDraggingRef.current = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+
+      document.body.style.cursor = pos === 'top' ? 'row-resize' : 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+    [config.tabPosition, panelSize],
+  );
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -187,6 +253,10 @@ export default function App() {
           log('Keyboard shortcut: switch tab', e.shiftKey ? 'prev' : 'next');
           switchTab(tabs[nextIdx].id);
         }
+      } else if (mod && e.key === 'b') {
+        e.preventDefault();
+        log('Keyboard shortcut: toggle panel collapse');
+        toggleCollapse();
       } else if (mod && e.key >= '1' && e.key <= '9') {
         e.preventDefault();
         const idx = parseInt(e.key) - 1;
@@ -198,23 +268,43 @@ export default function App() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [tabs, activeTabId, createTab, closeTab, switchTab]);
+  }, [tabs, activeTabId, createTab, closeTab, switchTab, toggleCollapse]);
 
   const flexDirection =
     config.tabPosition === 'top' ? 'column' : config.tabPosition === 'left' ? 'row' : 'row-reverse';
 
+  const pos = config.tabPosition;
+  const isVertical = pos === 'left' || pos === 'right';
+  const tabBarStyle: React.CSSProperties = collapsed
+    ? {}
+    : isVertical
+      ? { width: panelSize[pos] }
+      : { height: panelSize[pos] };
+
+  const resizeCursor = isVertical ? 'col-resize' : 'row-resize';
+
   return (
-    <div className={`app theme-${config.theme}`} style={{ flexDirection }}>
+    <div ref={appRef} className={`app theme-${config.theme}`} style={{ flexDirection }}>
       <TabBar
         tabs={tabs}
         activeTabId={activeTabId}
         position={config.tabPosition}
+        collapsed={collapsed}
+        onToggleCollapse={toggleCollapse}
         onCreateTab={createTab}
         onCloseTab={closeTab}
         onSwitchTab={switchTab}
         onRenameTab={renameTab}
         onChangePosition={changeTabPosition}
+        {...(!collapsed && { style: tabBarStyle })}
       />
+      {!collapsed && (
+        <div
+          className={`resize-handle resize-handle-${pos}`}
+          style={{ cursor: resizeCursor }}
+          onMouseDown={handleResizeStart}
+        />
+      )}
       <div className="terminal-area">
         {tabs.map((tab) => (
           <TerminalPanel
