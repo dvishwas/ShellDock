@@ -101,13 +101,24 @@ export function useTerminal(
     log('Terminal opened in DOM for tab:', tabId);
 
     // Fit after a small delay to ensure container is sized
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         fitAddon.fit();
         log('Initial fit for tab:', tabId, 'cols:', terminal.cols, 'rows:', terminal.rows);
         ipcRenderer.send(IPC.TAB_RESIZE, tabId, terminal.cols, terminal.rows);
       } catch (err: any) {
         logError('Initial fit failed for tab:', tabId, err.message);
+      }
+
+      // Replay saved scrollback for restored sessions
+      try {
+        const scrollback: string = await ipcRenderer.invoke(IPC.TAB_GET_SCROLLBACK, tabId);
+        if (scrollback) {
+          log('Replaying scrollback for tab:', tabId, 'length:', scrollback.length);
+          terminal.write(scrollback);
+        }
+      } catch (err: any) {
+        logError('Failed to load scrollback for tab:', tabId, err.message);
       }
     }, 100);
 

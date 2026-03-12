@@ -42,6 +42,7 @@ export const IPC = {
   CONFIG_SET: 'config:set',
   SESSION_GET: 'session:get',
   SESSION_RESTORE: 'session:restore',
+  TAB_GET_SCROLLBACK: 'tab:get-scrollback',
 } as const;
 
 export interface TabCreateResult {

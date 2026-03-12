@@ -1,7 +1,7 @@
 import { app, BrowserWindow, shell, dialog } from 'electron';
 import * as path from 'path';
 import { autoUpdater } from 'electron-updater';
-import { setupIpcHandlers, setMainWindow } from './ipc-handlers';
+import { setupIpcHandlers, setMainWindow, saveScrollbackToDisk } from './ipc-handlers';
 import { killAllSessions } from './pty-manager';
 import { getConfig } from './config-store';
 
@@ -108,7 +108,8 @@ function setupAutoUpdater(): void {
 }
 
 app.on('window-all-closed', () => {
-  log('All windows closed, cleaning up PTY processes');
+  log('All windows closed, saving scrollback and cleaning up PTY processes');
+  saveScrollbackToDisk();
   killAllSessions();
   if (process.platform !== 'darwin') {
     log('Quitting app (non-macOS)');
@@ -117,6 +118,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  log('Before quit, killing PTY processes');
+  log('Before quit, saving scrollback and killing PTY processes');
+  saveScrollbackToDisk();
   killAllSessions();
 });

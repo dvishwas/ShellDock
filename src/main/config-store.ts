@@ -22,11 +22,13 @@ const store = new Store<{
   config: AppConfig;
   tabs: TabInfo[];
   activeTabId: string | null;
+  scrollback: Record<string, string>;
 }>({
   defaults: {
     config: defaultConfig,
     tabs: [],
     activeTabId: null,
+    scrollback: {},
   },
 });
 
@@ -60,6 +62,22 @@ export function getActiveTabId(): string | null {
 export function setActiveTabId(id: string | null): void {
   store.set('activeTabId', id);
   log('Active tab ID set to:', id);
+}
+
+export function getScrollback(tabId: string): string {
+  const all = store.get('scrollback');
+  return all[tabId] || '';
+}
+
+export function saveScrollback(scrollback: Record<string, string>): void {
+  store.set('scrollback', scrollback);
+  log('Saved scrollback for', Object.keys(scrollback).length, 'tabs');
+}
+
+export function clearScrollback(tabId: string): void {
+  const all = store.get('scrollback');
+  delete all[tabId];
+  store.set('scrollback', all);
 }
 
 export function getSessionState(): SessionState {

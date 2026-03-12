@@ -11,6 +11,7 @@ interface ManagedSession {
 }
 
 const sessions = new Map<string, ManagedSession>();
+let shuttingDown = false;
 
 function detectShell(): string {
   if (process.platform === 'win32') {
@@ -55,7 +56,9 @@ export function createSessionWithId(
   ptyProcess.onExit(({ exitCode, signal }) => {
     log('PTY exited for session:', id, 'exitCode:', exitCode, 'signal:', signal);
     sessions.delete(id);
-    onExit(id);
+    if (!shuttingDown) {
+      onExit(id);
+    }
   });
 
   const session: ManagedSession = { id, ptyProcess };
@@ -97,6 +100,7 @@ export function killSession(tabId: string): void {
 
 export function killAllSessions(): void {
   log('Killing all PTY processes. Count:', sessions.size);
+  shuttingDown = true;
   for (const [id, session] of sessions) {
     log('Killing PTY:', id, 'pid:', session.ptyProcess.pid);
     session.ptyProcess.kill();

@@ -8,6 +8,9 @@ const logError = (msg: string, ...args: any[]) => console.error(`[ShellDock:ipc]
 
 let mainWindow: BrowserWindow | null = null;
 
+const MAX_SCROLLBACK = 100_000; // characters per tab
+const scrollbackBuffers = new Map<string, string>();
+
 export function setMainWindow(win: BrowserWindow): void {
   mainWindow = win;
   log('Main window reference set');
@@ -24,6 +27,14 @@ function sendToRenderer(channel: string, ...args: any[]): void {
 function handleTabData(tabId: string, data: string): void {
   sendToRenderer(IPC.TAB_OUTPUT, tabId, data);
 
+  // Buffer output for session recovery
+  const existing = scrollbackBuffers.get(tabId) || '';
+  let updated = existing + data;
+  if (updated.length > MAX_SCROLLBACK) {
+    updated = updated.slice(-MAX_SCROLLBACK);
+  }
+  scrollbackBuffers.set(tabId, updated);
+
   // Detect bell character
   if (data.includes('\x07')) {
     log('Bell detected in tab:', tabId);
@@ -35,6 +46,8 @@ function handleTabExit(tabId: string): void {
   log('Tab process exited:', tabId);
   const tabs = config.getSavedTabs().filter((t) => t.id !== tabId);
   config.saveTabs(tabs);
+  scrollbackBuffers.delete(tabId);
+  config.clearScrollback(tabId);
   sendToRenderer(IPC.TAB_DATA, tabs);
 }
 
@@ -137,5 +150,18 @@ export function setupIpcHandlers(): void {
     return savedTabs;
   });
 
+  ipcMain.handle(IPC.TAB_GET_SCROLLBACK, async (_event, tabId: string): Promise<string> => {
+    log('IPC: tab:get-scrollback for:', tabId);
+    return config.getScrollback(tabId);
+  });
+
   log('All IPC handlers registered');
+}
+
+export function saveScrollbackToDisk(): void {
+  const obj: Record<string, string> = {};
+  for (const [id, buf] of scrollbackBuffers) {
+    obj[id] = buf;
+  }
+  config.saveScrollback(obj);
 }
