@@ -1,0 +1,46 @@
+{
+  "name": "shelldock",
+  "version": "1.0.0",
+  "description": "Multi-tab terminal manager with smart features, session recovery, and configurable layout",
+  "main": "dist/main/index.js",
+  "bin": {
+    "shelldock": "./bin/shelldock"
+  },
+  "scripts": {
+    "postinstall": "npx electron-rebuild || true",
+    "start": "npm run build && electron .",
+    "dev": "node scripts/build.js --watch & wait-on dist/main/index.js dist/renderer/index.html && electron .",
+    "build": "node scripts/build.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "installer:mac": "bash scripts/build-macos-installer.sh"
+  },
+  "keywords": ["terminal", "tabs", "tmux", "electron", "shelldock"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "concurrently": "^8.2.0",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.0",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0",
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.1.0",
+    "node-pty": "^1.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "uuid": "^9.0.0"
+  }
+}

@@ -1,0 +1,64 @@
+#!/usr/bin/env node
+
+const { execSync, spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+const args = process.argv.slice(2);
+
+if (args.includes('--version') || args.includes('-v')) {
+  const pkg = require(path.join(__dirname, '..', 'package.json'));
+  console.log(`ShellDock v${pkg.version}`);
+  process.exit(0);
+}
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(`
+ShellDock - Multi-tab terminal manager
+
+Usage:
+  shelldock              Launch ShellDock
+  shelldock --version    Print version
+  shelldock --config     Open config file location
+  shelldock --help       Show this help
+`);
+  process.exit(0);
+}
+
+if (args.includes('--config')) {
+  const configDir = path.join(
+    process.env.HOME || process.env.USERPROFILE || '',
+    process.platform === 'darwin'
+      ? 'Library/Application Support/shelldock'
+      : process.platform === 'win32'
+        ? 'AppData/Roaming/shelldock'
+        : '.config/shelldock',
+  );
+
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  console.log(`Config directory: ${configDir}`);
+
+  if (process.platform === 'darwin') {
+    execSync(`open "${configDir}"`);
+  } else if (process.platform === 'win32') {
+    execSync(`explorer "${configDir}"`);
+  } else {
+    execSync(`xdg-open "${configDir}"`);
+  }
+  process.exit(0);
+}
+
+// Launch the Electron app
+const electronPath = path.join(__dirname, '..', 'node_modules', '.bin', 'electron');
+const appPath = path.join(__dirname, '..');
+
+const child = spawn(electronPath, [appPath], {
+  stdio: 'inherit',
+  detached: true,
+});
+
+child.unref();
+process.exit(0);
