@@ -39,7 +39,7 @@ export function createSessionWithId(
   // Remove variables that interfere with nested tool sessions
   delete env.CLAUDECODE;
 
-  const ptyProcess = pty.spawn(shell, [], {
+  const ptyProcess = pty.spawn(shell, ['--login'], {
     name: 'xterm-256color',
     cols: 120,
     rows: 30,
