@@ -112,6 +112,7 @@ export function useTerminal(
     setTimeout(async () => {
       try {
         fitAddon.fit();
+        terminal.scrollToBottom();
         log('Initial fit for tab:', tabId, 'cols:', terminal.cols, 'rows:', terminal.rows);
         ipcRenderer.send(IPC.TAB_RESIZE, tabId, terminal.cols, terminal.rows);
       } catch (err: any) {
@@ -124,6 +125,7 @@ export function useTerminal(
         if (scrollback) {
           log('Replaying scrollback for tab:', tabId, 'length:', scrollback.length);
           terminal.write(scrollback);
+          terminal.scrollToBottom();
         }
       } catch (err: any) {
         logError('Failed to load scrollback for tab:', tabId, err.message);
@@ -149,6 +151,7 @@ export function useTerminal(
       if (fitAddonRef.current) {
         try {
           fitAddonRef.current.fit();
+          terminal.scrollToBottom();
           ipcRenderer.send(IPC.TAB_RESIZE, tabId, terminal.cols, terminal.rows);
         } catch (err: any) {
           logError('Resize fit failed for tab:', tabId, err.message);
@@ -162,6 +165,7 @@ export function useTerminal(
       if (fitAddonRef.current) {
         try {
           fitAddonRef.current.fit();
+          terminal.scrollToBottom();
           ipcRenderer.send(IPC.TAB_RESIZE, tabId, terminal.cols, terminal.rows);
         } catch (err: any) {
           logError('ResizeObserver fit failed for tab:', tabId, err.message);
