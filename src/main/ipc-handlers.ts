@@ -48,6 +48,7 @@ function handleTabExit(tabId: string): void {
   config.saveTabs(tabs);
   scrollbackBuffers.delete(tabId);
   config.clearScrollback(tabId);
+  config.clearCwd(tabId);
   sendToRenderer(IPC.TAB_DATA, tabs);
 }
 
@@ -143,8 +144,9 @@ export function setupIpcHandlers(): void {
     log('Restoring PTY sessions for', savedTabs.length, 'saved tabs');
     for (const tab of savedTabs) {
       if (!ptyManager.getSession(tab.id)) {
-        log('Spawning PTY for restored tab:', tab.id, tab.name);
-        ptyManager.createSessionWithId(tab.id, handleTabData, handleTabExit);
+        const cwd = config.getCwd(tab.id);
+        log('Spawning PTY for restored tab:', tab.id, tab.name, 'cwd:', cwd || '(default)');
+        ptyManager.createSessionWithId(tab.id, handleTabData, handleTabExit, cwd || undefined);
       }
     }
     return savedTabs;
@@ -164,4 +166,8 @@ export function saveScrollbackToDisk(): void {
     obj[id] = buf;
   }
   config.saveScrollback(obj);
+
+  // Save current working directories for all sessions
+  const cwds = ptyManager.getAllSessionCwds();
+  config.saveCwds(cwds);
 }

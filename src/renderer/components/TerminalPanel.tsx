@@ -1,7 +1,18 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useTerminal } from '../hooks/useTerminal';
+import { IPC } from '../../shared/types';
+
+const { ipcRenderer } = window.require('electron');
 
 const log = (msg: string, ...args: any[]) => console.log(`[ShellDock:panel] ${msg}`, ...args);
+
+function escapeShellPath(filePath: string): string {
+  // Wrap in single quotes and escape any existing single quotes
+  if (/[ '"\\()&;|<>!$`#]/.test(filePath)) {
+    return `'${filePath.replace(/'/g, "'\\''")}'`;
+  }
+  return filePath;
+}
 
 interface TerminalPanelProps {
   tabId: string;
@@ -15,6 +26,7 @@ export function TerminalPanel({ tabId, isVisible, fontSize, fontFamily, theme }:
   const containerRef = useRef<HTMLDivElement>(null);
   const { terminalRef } = useTerminal(tabId, containerRef, { fontSize, fontFamily, theme });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => {
     if (isVisible && terminalRef.current) {
@@ -83,11 +95,40 @@ export function TerminalPanel({ tabId, isVisible, fontSize, fontFamily, theme }:
     setContextMenu(null);
   }, [tabId]);
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const paths = Array.from(files).map((f) => escapeShellPath(f.path));
+      const joined = paths.join(' ');
+      log('Dropped files, inserting paths:', joined);
+      ipcRenderer.send(IPC.TAB_INPUT, tabId, joined);
+    }
+  }, [tabId]);
+
   return (
     <div
       ref={containerRef}
-      className={`terminal-panel ${isVisible ? 'terminal-visible' : 'terminal-hidden'}`}
+      className={`terminal-panel ${isVisible ? 'terminal-visible' : 'terminal-hidden'}${isDragOver ? ' terminal-drag-over' : ''}`}
       onContextMenu={handleContextMenu}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       {contextMenu && (
         <div

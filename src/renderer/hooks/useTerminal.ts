@@ -100,6 +100,36 @@ export function useTerminal(
     fitAddonRef.current = fitAddon;
     log('Terminal opened in DOM for tab:', tabId);
 
+    // Track last known dimensions to skip no-op fit() calls
+    let lastCols = 0;
+    let lastRows = 0;
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // Fit only if dimensions actually changed — prevents scroll reset on no-op resizes
+    const safeFit = () => {
+      if (!fitAddonRef.current) return;
+      fitAddonRef.current.fit();
+      const newCols = terminal.cols;
+      const newRows = terminal.rows;
+      if (newCols !== lastCols || newRows !== lastRows) {
+        lastCols = newCols;
+        lastRows = newRows;
+        ipcRenderer.send(IPC.TAB_RESIZE, tabId, newCols, newRows);
+        // Only scroll to bottom when dimensions actually change
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            terminal.scrollToBottom();
+          });
+        });
+      }
+    };
+
+    // Debounced fit for ResizeObserver — avoids rapid-fire during drag resize
+    const debouncedFit = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(safeFit, 50);
+    };
+
     // Let modifier key combos (Cmd+T, Cmd+W, etc.) bubble up to window handlers
     terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && ['t', 'w', 'Tab', '1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(e.key)) {
@@ -112,9 +142,10 @@ export function useTerminal(
     setTimeout(async () => {
       try {
         fitAddon.fit();
-        terminal.scrollToBottom();
-        log('Initial fit for tab:', tabId, 'cols:', terminal.cols, 'rows:', terminal.rows);
-        ipcRenderer.send(IPC.TAB_RESIZE, tabId, terminal.cols, terminal.rows);
+        lastCols = terminal.cols;
+        lastRows = terminal.rows;
+        log('Initial fit for tab:', tabId, 'cols:', lastCols, 'rows:', lastRows);
+        ipcRenderer.send(IPC.TAB_RESIZE, tabId, lastCols, lastRows);
       } catch (err: any) {
         logError('Initial fit failed for tab:', tabId, err.message);
       }
@@ -125,7 +156,7 @@ export function useTerminal(
         if (scrollback) {
           log('Replaying scrollback for tab:', tabId, 'length:', scrollback.length);
           terminal.write(scrollback);
-          terminal.scrollToBottom();
+          requestAnimationFrame(() => terminal.scrollToBottom());
         }
       } catch (err: any) {
         logError('Failed to load scrollback for tab:', tabId, err.message);
@@ -148,28 +179,20 @@ export function useTerminal(
 
     // Handle resize
     const onResize = () => {
-      if (fitAddonRef.current) {
-        try {
-          fitAddonRef.current.fit();
-          terminal.scrollToBottom();
-          ipcRenderer.send(IPC.TAB_RESIZE, tabId, terminal.cols, terminal.rows);
-        } catch (err: any) {
-          logError('Resize fit failed for tab:', tabId, err.message);
-        }
+      try {
+        safeFit();
+      } catch (err: any) {
+        logError('Resize fit failed for tab:', tabId, err.message);
       }
     };
     window.addEventListener('resize', onResize);
 
-    // ResizeObserver for container size changes
+    // ResizeObserver for container size changes — debounced
     const resizeObserver = new ResizeObserver(() => {
-      if (fitAddonRef.current) {
-        try {
-          fitAddonRef.current.fit();
-          terminal.scrollToBottom();
-          ipcRenderer.send(IPC.TAB_RESIZE, tabId, terminal.cols, terminal.rows);
-        } catch (err: any) {
-          logError('ResizeObserver fit failed for tab:', tabId, err.message);
-        }
+      try {
+        debouncedFit();
+      } catch (err: any) {
+        logError('ResizeObserver fit failed for tab:', tabId, err.message);
       }
     });
     resizeObserver.observe(containerRef.current);
@@ -177,6 +200,7 @@ export function useTerminal(
 
     return () => {
       log('Cleaning up terminal for tab:', tabId);
+      if (resizeTimer) clearTimeout(resizeTimer);
       window.removeEventListener('resize', onResize);
       ipcRenderer.removeListener(IPC.TAB_OUTPUT, onOutput);
       resizeObserver.disconnect();

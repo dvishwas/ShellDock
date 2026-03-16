@@ -23,12 +23,14 @@ const store = new Store<{
   tabs: TabInfo[];
   activeTabId: string | null;
   scrollback: Record<string, string>;
+  cwds: Record<string, string>;
 }>({
   defaults: {
     config: defaultConfig,
     tabs: [],
     activeTabId: null,
     scrollback: {},
+    cwds: {},
   },
 });
 
@@ -78,6 +80,22 @@ export function clearScrollback(tabId: string): void {
   const all = store.get('scrollback');
   delete all[tabId];
   store.set('scrollback', all);
+}
+
+export function saveCwds(cwds: Record<string, string>): void {
+  store.set('cwds', cwds);
+  log('Saved cwds for', Object.keys(cwds).length, 'tabs');
+}
+
+export function getCwd(tabId: string): string {
+  const all = store.get('cwds');
+  return all[tabId] || '';
+}
+
+export function clearCwd(tabId: string): void {
+  const all = store.get('cwds');
+  delete all[tabId];
+  store.set('cwds', all);
 }
 
 export function getSessionState(): SessionState {

@@ -65,7 +65,7 @@ export default function App() {
           // Spawn PTY processes for restored tabs before rendering them
           await ipcRenderer.invoke(IPC.SESSION_RESTORE);
           log('PTY sessions restored for saved tabs');
-          setTabs(session.tabs);
+          setTabs(session.tabs.map((t) => ({ ...t, hasBell: false })));
           setActiveTabId(session.activeTabId || session.tabs[0].id);
         }
       } catch (err: any) {

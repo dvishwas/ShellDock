@@ -9,6 +9,16 @@ import { IPC } from '../shared/types';
 const log = (msg: string, ...args: any[]) => console.log(`[ShellDock:main] ${msg}`, ...args);
 const logError = (msg: string, ...args: any[]) => console.error(`[ShellDock:main] ERROR: ${msg}`, ...args);
 
+// Prevent EIO errors from crashing the app when PTY processes exit
+process.on('uncaughtException', (err) => {
+  if (err.message.includes('EIO')) {
+    log('Suppressed PTY EIO error:', err.message);
+  } else {
+    logError('Uncaught exception:', err.message);
+    throw err;
+  }
+});
+
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
