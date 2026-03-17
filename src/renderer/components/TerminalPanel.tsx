@@ -30,9 +30,8 @@ export function TerminalPanel({ tabId, isVisible, fontSize, fontFamily, theme }:
 
   useEffect(() => {
     if (isVisible && terminalRef.current) {
+      terminalRef.current.scrollToBottom();
       terminalRef.current.focus();
-      const event = new Event('resize');
-      window.dispatchEvent(event);
     }
   }, [isVisible]);
 

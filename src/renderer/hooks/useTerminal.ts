@@ -108,20 +108,15 @@ export function useTerminal(
     // Fit only if dimensions actually changed — prevents scroll reset on no-op resizes
     const safeFit = () => {
       if (!fitAddonRef.current) return;
+      // Check proposed dimensions BEFORE calling fit() to avoid resetting scroll for no reason
+      const dims = fitAddonRef.current.proposeDimensions();
+      if (!dims) return;
+      if (dims.cols === lastCols && dims.rows === lastRows) return;
       fitAddonRef.current.fit();
-      const newCols = terminal.cols;
-      const newRows = terminal.rows;
-      if (newCols !== lastCols || newRows !== lastRows) {
-        lastCols = newCols;
-        lastRows = newRows;
-        ipcRenderer.send(IPC.TAB_RESIZE, tabId, newCols, newRows);
-        // Only scroll to bottom when dimensions actually change
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            terminal.scrollToBottom();
-          });
-        });
-      }
+      lastCols = dims.cols;
+      lastRows = dims.rows;
+      ipcRenderer.send(IPC.TAB_RESIZE, tabId, dims.cols, dims.rows);
+      terminal.scrollToBottom();
     };
 
     // Debounced fit for ResizeObserver — avoids rapid-fire during drag resize
@@ -146,6 +141,7 @@ export function useTerminal(
         lastRows = terminal.rows;
         log('Initial fit for tab:', tabId, 'cols:', lastCols, 'rows:', lastRows);
         ipcRenderer.send(IPC.TAB_RESIZE, tabId, lastCols, lastRows);
+        terminal.scrollToBottom();
       } catch (err: any) {
         logError('Initial fit failed for tab:', tabId, err.message);
       }
@@ -155,8 +151,7 @@ export function useTerminal(
         const scrollback: string = await ipcRenderer.invoke(IPC.TAB_GET_SCROLLBACK, tabId);
         if (scrollback) {
           log('Replaying scrollback for tab:', tabId, 'length:', scrollback.length);
-          terminal.write(scrollback);
-          requestAnimationFrame(() => terminal.scrollToBottom());
+          terminal.write(scrollback, () => terminal.scrollToBottom());
         }
       } catch (err: any) {
         logError('Failed to load scrollback for tab:', tabId, err.message);
@@ -171,7 +166,9 @@ export function useTerminal(
     // Handle output from main process -> write to terminal
     const onOutput = (_event: any, outputTabId: string, data: string) => {
       if (outputTabId === tabId) {
-        terminal.write(data);
+        terminal.write(data, () => {
+          terminal.scrollToBottom();
+        });
       }
     };
     ipcRenderer.on(IPC.TAB_OUTPUT, onOutput);
