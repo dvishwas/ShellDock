@@ -1,0 +1,45 @@
+{
+  "branch_prefix": "agent",
+  "budgets": {
+    "max_diff_lines": 800,
+    "max_files": 25
+  },
+  "cache": {
+    "scope": "project"
+  },
+  "default_branch": "main",
+  "docs_paths": [
+    "*.md",
+    "docs/**",
+    "README*",
+    "AGENTS.md"
+  ],
+  "labels": {
+    "approved": "agent:approved",
+    "changes_required": "agent:changes-required",
+    "done": "agent:done",
+    "executing": "agent:executing",
+    "failed": "agent:failed",
+    "planning": "agent:planning",
+    "ready": "agent:ready",
+    "reviewing": "agent:reviewing"
+  },
+  "platform": "github",
+  "project": "ShellDock",
+  "repo": "dvishwas/ShellDock",
+  "runtime": {
+    "stack": "jdk",
+    "version": "21"
+  },
+  "verification": [
+    "agent-verify"
+  ],
+  "verification_profiles": {
+    "default": [
+      "agent-verify"
+    ],
+    "docs": [
+      "git diff --check"
+    ]
+  }
+}
